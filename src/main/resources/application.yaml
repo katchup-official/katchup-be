@@ -1,0 +1,11 @@
+spring:
+  profiles:
+    group:
+      test: "test"
+      local: "local"
+      dev: "dev, datasource, actuator"
+      prod: "prod, datasource, actuator"
+    include:
+      - redis
+      - security
+      - s3
