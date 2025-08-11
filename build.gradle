@@ -3,6 +3,7 @@ plugins {
 	id 'org.springframework.boot' version '3.5.4'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.diffplug.spotless' version '6.25.0'
+	id 'jacoco'
 }
 
 group = 'com.katchup'
@@ -38,10 +39,77 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
+// jacoco
+jacoco {
+	toolVersion = "0.8.13"
+}
+
+jacocoTestReport {
+	dependsOn test
+
+	def Qdomains = []
+	for(qPattern in "**/QA" .. "**/QZ"){
+		Qdomains.add(qPattern+"*")
+	}
+
+	reports {
+		xml.required = true
+		html.required = true
+		csv.required = true
+	}
+
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, excludes: [
+					'**/XXXApplication.class'
+			] + Qdomains)
+		}))
+	}
+}
+
+jacocoTestCoverageVerification {
+	def Qdomains = []
+	for (qPattern in "*.QA".."*.QZ") {  // qPattern = "*.QA","*.QB","*.QC", ... "*.QZ"
+		Qdomains.add(qPattern + "*")
+	}
+
+	violationRules {
+		rule {
+			enabled = true
+			element = 'CLASS'
+
+			limit {
+				counter = 'LINE'
+				value = 'COVEREDRATIO'
+				minimum = 0.60
+			}
+
+			limit {
+				counter = 'METHOD'
+				value = 'COVEREDRATIO'
+				minimum = 0.70
+			}
+
+			excludes = ['*.XXXApplication'] + Qdomains
+		}
+	}
+}
+
+tasks.register('testAndGenerateReport') {
+	group 'verification'
+	description 'test w/ jacoco'
+
+	dependsOn ':test', ':jacocoTestReport', ':jacocoTestCoverageVerification'
+
+	tasks.jacocoTestReport.mustRunAfter tasks.test
+	tasks.jacocoTestCoverageVerification.mustRunAfter tasks.jacocoTestReport
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 }
 
+// spotless
 spotless {
 	java {
 		// import 순서 정의
